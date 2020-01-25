@@ -3,8 +3,8 @@ const Discord = require('discord.js');
 const config = require('./bot_config/config.json');
 const Twitch = require('twitch.tv-api');
 const twitch = new Twitch({
-  id: '2rk2atcm3jx7w1wko0qy0qnravg67e',
-  secret: '04x6vpeozi6njqieegf3m1nwxdr2b6'
+  id: '',
+  secret: ''
 });
 const streamers = require('./bot_config/streamers.json');
 
