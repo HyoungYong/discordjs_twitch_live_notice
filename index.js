@@ -1,12 +1,15 @@
 const fs = require('fs');
+const axios = require("axios");
+const cheerio = require("cheerio");
 const Discord = require('discord.js');
 const config = require('./bot_config/config.json');
 const Twitch = require('twitch.tv-api');
 const twitch = new Twitch({
-  id: '2rk2atcm3jx7w1wko0qy0qnravg67e',
-  secret: '04x6vpeozi6njqieegf3m1nwxdr2b6'
+  id: '',
+  secret: ''
 });
 const streamers = require('./bot_config/streamers.json');
+const wroteUpdates = require('./r6updates.json');
 
 const client = new Discord.Client();
 client.commands = new Discord.Collection();
@@ -28,7 +31,7 @@ function liveCheck() {
           streamers[name].live = null;
         }
         else { // 방송 중
-          if(streamers[name].live === null) { // 이미 방송공지를 한 경우
+          if(!streamers[name].live) { // 이미 방송공지를 한 경우
             streamers[name].live = 'live';
             const channel = data.stream.channel;
             const streamerEmbed = new Discord.RichEmbed()
@@ -48,12 +51,55 @@ function liveCheck() {
   }
 }
 
+const getHtml = async () => {
+  try {
+    html = await axios.get("https://www.ubisoft.com/ko-kr/game/rainbow-six/siege/news-updates");
+
+    const urlList = [];
+    const $ = cheerio.load(html.data);
+    const $bodyList = $("div.updatesFeed__items").children("a.updatesFeed__item");
+
+    $bodyList.each(function(i, e) {
+      urlList[i] = {
+        "title": $(this).find('h2.updatesFeed__item__wrapper__content__title').text(),
+        "subtitle": $(this).find('p.updatesFeed__item__wrapper__content__abstract').text(),
+        "imgURL": $(this).find('div.updatesFeed__item__wrapper__media img').attr('src'),
+        "URL": 'https://www.ubisoft.com' + $(this).attr('href'),
+        "year": $(this).find('span.date__year').text(),
+        "month": $(this).find('span.date__month').text(),
+        "day": $(this).find('span.date__day').text()
+      };
+    });
+
+    const newestUpdate = urlList[0]
+    if (newestUpdate.title !== wroteUpdates.title) {
+      fs.writeFile('./r6updates.json', JSON.stringify(newestUpdate), function(err) {
+        const streamerEmbed = new Discord.RichEmbed()
+          .setTitle(newestUpdate.title)
+          .setURL(newestUpdate.URL)
+          .setDescription(newestUpdate.subtitle)
+          .setImage(newestUpdate.imgURL)
+          .setFooter(newestUpdate.year + '년 ' + newestUpdate.month + '월 ' + newestUpdate.day + '일');
+
+        console.log('new update posted')
+        client.channels.get("670285623868915716").send(streamerEmbed);
+      });
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 // Listener event: Runs when the bot is online.
 client.on('ready', async () => {
   console.log('Ready!');
   client.user.setActivity('.help', {type: 'PLAYING'});
   
-  setInterval(liveCheck, 15*1000);
+  getHtml();
+  
+  // setInterval(getHtml, 10*1000);
+
+  // setInterval(liveCheck, 60*1000);
 });
 
 client.on('message', message => {
