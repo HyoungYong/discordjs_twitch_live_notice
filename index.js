@@ -53,7 +53,7 @@ async function liveCheck() {
           .addField('Follwers', streamerinfo.followers, true)
           .setTimestamp();
           
-        await client.channels.get("670285623868915716").send(streamerEmbed);
+        await client.channels.get("653941859391111189").send(streamerEmbed);
         await fs.writeFileSync('./bot_config/streamers.json', JSON.stringify(data));
       }
     }
@@ -87,7 +87,6 @@ const getHtml = async () => {
     });
   
     const newestUpdate = urlList[0]
-    log (urlList)
     if (newestUpdate.title !== wroteUpdates.title) {
       fs.writeFileSync('./r6updates.json', JSON.stringify(newestUpdate));
         const streamerEmbed = new Discord.RichEmbed()
@@ -113,9 +112,8 @@ client.on('ready', async () => {
   // getHtml();
   // liveCheck();
   
-  await setInterval(getHtml, 10*1000);
-
-  // setInterval(liveCheck, 10*1000);
+  await setInterval(getHtml, 300*1000);
+  await setInterval(liveCheck, 60*1000);
 });
 
 client.on('message', async (message) => {

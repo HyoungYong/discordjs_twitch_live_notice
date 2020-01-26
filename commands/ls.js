@@ -14,7 +14,7 @@ module.exports = {
 		for (streamer of streamers) {
 			output.push(`${streamer.id}\t${streamer.nickname}\t${streamer.live}`);
 		}
-		console.log(output.join(`\n`));
+		message.channel.send(output.join(`\n`));
 
 		// for (streamer in streamers) {
     //   message.channel.send(steamer);
