@@ -9,7 +9,7 @@ const twitch = new Twitch({
   secret: config.twitch_secret
 });
 
-let wroteUpdates = require('./r6updates.json');
+var wroteUpdate = require('./r6updates.json');
 
 let client = new Discord.Client();
 client.commands = new Discord.Collection();
@@ -53,7 +53,7 @@ async function liveCheck() {
           .addField('Follwers', streamerinfo.followers, true)
           .setTimestamp();
           
-        await client.channels.get("653941859391111189").send(streamerEmbed);
+        await client.channels.get("670285623868915716").send(streamerEmbed);
         await fs.writeFileSync('./bot_config/streamers.json', JSON.stringify(data));
       }
     }
@@ -86,9 +86,12 @@ const getHtml = async () => {
       };
     });
   
-    const newestUpdate = urlList[0]
-    if (newestUpdate.title !== wroteUpdates.title) {
-      fs.writeFileSync('./r6updates.json', JSON.stringify(newestUpdate));
+    
+    var newestUpdate = urlList[0]
+    if (newestUpdate.title != wroteUpdate.title) {
+      log (newestUpdate.title)
+      log (wroteUpdate.title)
+      await fs.writeFileSync('./r6updates.json', JSON.stringify(newestUpdate));
         const streamerEmbed = new Discord.RichEmbed()
           .setTitle(newestUpdate.title)
           .setURL(newestUpdate.URL)
@@ -97,6 +100,7 @@ const getHtml = async () => {
           .setFooter(newestUpdate.year + '년 ' + newestUpdate.month + '월 ' + newestUpdate.day + '일');
 
       console.log('new update posted')
+      wroteUpdate = newestUpdate;
       client.channels.get("670285623868915716").send(streamerEmbed);
     }
   } catch (error) {
@@ -112,8 +116,8 @@ client.on('ready', async () => {
   // getHtml();
   // liveCheck();
   
-  await setInterval(getHtml, 300*1000);
-  await setInterval(liveCheck, 60*1000);
+  setInterval(getHtml, 10*1000);
+  // await setInterval(liveCheck, 60*1000);
 });
 
 client.on('message', async (message) => {
