@@ -5,13 +5,13 @@ const Discord = require('discord.js');
 const config = require('./bot_config/config.json');
 const Twitch = require('twitch.tv-api');
 const twitch = new Twitch({
-  id: '',
-  secret: ''
+  id: config.twitch_id,
+  secret: config.twitch_secret
 });
-const streamers = require('./bot_config/streamers.json');
-const wroteUpdates = require('./r6updates.json');
 
-const client = new Discord.Client();
+let wroteUpdates = require('./r6updates.json');
+
+let client = new Discord.Client();
 client.commands = new Discord.Collection();
 
 // Load Command Lists
@@ -21,33 +21,48 @@ for (const file of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-function liveCheck() {
-  const keys = Object.keys(streamers);
+const log = console.log
+async function liveCheck() {
+  var data = require('./bot_config/streamers.json');
+  var streamers = data.streamers;
 
-  for(const name of keys) {
-    twitch.getUser(name)
-      .then(data => {
-        if(data.stream === null) { // 방송 중이 아닐 경우
-          streamers[name].live = null;
-        }
-        else { // 방송 중
-          if(!streamers[name].live) { // 이미 방송공지를 한 경우
-            streamers[name].live = 'live';
-            const channel = data.stream.channel;
-            const streamerEmbed = new Discord.RichEmbed()
-              .setTitle(channel.status)
-              .setURL(channel.url)
-              .setAuthor(channel.display_name, channel.logo, channel.url)
-              .setThumbnail(channel.logo)
-              .setImage(data.stream.preview.large)
-              .addField('Game', channel.game, true)
-              .addField('Follwers', channel.followers, true)
-              .setTimestamp();
-  
-              client.channels.get("670285623868915716").send(streamerEmbed);
-          }
-        }
-      });
+  const keys = streamers.keys();
+  for (var key of keys) {
+    // 스트리머 방송 확인
+    const twitchData = await twitch.getUser(streamers[key].id);
+    if (twitchData.stream) {
+      // log('O')
+      if (streamers[key].live) {
+        // log('방송 O 공지 O ' + streamers[key].id);
+        // 이미 방송공지를 한 경우 do nothing
+      }
+      else {
+        // log('방송 O 공지 X ' + streamers[key].id);
+        // 방송 공지를 안 한 경우
+        var streamerinfo = twitchData.stream.channel;
+        streamers[key].live = true;
+        streamers[key].nickname = streamerinfo.display_name;
+        
+        var streamerEmbed = new Discord.RichEmbed()
+          .setTitle(streamerinfo.status)
+          .setURL(streamerinfo.url)
+          .setAuthor(streamerinfo.display_name, streamerinfo.logo, streamerinfo.url)
+          .setThumbnail(streamerinfo.logo)
+          .setImage(twitchData.stream.preview.large)
+          .addField('Game', streamerinfo.game, true)
+          .addField('Follwers', streamerinfo.followers, true)
+          .setTimestamp();
+          
+        await client.channels.get("670285623868915716").send(streamerEmbed);
+        await fs.writeFileSync('./bot_config/streamers.json', JSON.stringify(data));
+      }
+    }
+    else {
+      // log('방송 X ' + streamers[key].id);
+      // log('X')
+      streamers[key].live = false;
+      await fs.writeFileSync('./bot_config/streamers.json', JSON.stringify(data));
+    }
   }
 }
 
@@ -61,19 +76,20 @@ const getHtml = async () => {
 
     $bodyList.each(function(i, e) {
       urlList[i] = {
-        "title": $(this).find('h2.updatesFeed__item__wrapper__content__title').text(),
-        "subtitle": $(this).find('p.updatesFeed__item__wrapper__content__abstract').text(),
-        "imgURL": $(this).find('div.updatesFeed__item__wrapper__media img').attr('src'),
-        "URL": 'https://www.ubisoft.com' + $(this).attr('href'),
-        "year": $(this).find('span.date__year').text(),
-        "month": $(this).find('span.date__month').text(),
-        "day": $(this).find('span.date__day').text()
+        title: $(this).find('h2.updatesFeed__item__wrapper__content__title').text(),
+        subtitle: $(this).find('p.updatesFeed__item__wrapper__content__abstract').text(),
+        imgURL: $(this).find('div.updatesFeed__item__wrapper__media img').attr('src'),
+        URL: 'https://www.ubisoft.com' + $(this).attr('href'),
+        year: $(this).find('span.date__year').text(),
+        month: $(this).find('span.date__month').text(),
+        day: $(this).find('span.date__day').text()
       };
     });
-
+  
     const newestUpdate = urlList[0]
+    log (urlList)
     if (newestUpdate.title !== wroteUpdates.title) {
-      fs.writeFile('./r6updates.json', JSON.stringify(newestUpdate), function(err) {
+      fs.writeFileSync('./r6updates.json', JSON.stringify(newestUpdate));
         const streamerEmbed = new Discord.RichEmbed()
           .setTitle(newestUpdate.title)
           .setURL(newestUpdate.URL)
@@ -81,9 +97,8 @@ const getHtml = async () => {
           .setImage(newestUpdate.imgURL)
           .setFooter(newestUpdate.year + '년 ' + newestUpdate.month + '월 ' + newestUpdate.day + '일');
 
-        console.log('new update posted')
-        client.channels.get("670285623868915716").send(streamerEmbed);
-      });
+      console.log('new update posted')
+      client.channels.get("670285623868915716").send(streamerEmbed);
     }
   } catch (error) {
     console.error(error);
@@ -95,14 +110,15 @@ client.on('ready', async () => {
   console.log('Ready!');
   client.user.setActivity('.help', {type: 'PLAYING'});
   
-  getHtml();
+  // getHtml();
+  // liveCheck();
   
-  // setInterval(getHtml, 10*1000);
+  await setInterval(getHtml, 10*1000);
 
-  // setInterval(liveCheck, 60*1000);
+  // setInterval(liveCheck, 10*1000);
 });
 
-client.on('message', message => {
+client.on('message', async (message) => {
   const args = message.content.slice(config.prefix.length).split(/ +/);
 	const commandName = args.shift().toLowerCase();
 
@@ -121,7 +137,8 @@ client.on('message', message => {
   }
 
   try {
-    command.execute(message, args);
+    const res = await command.execute(message, args);
+    // console.log(res)
   } catch (error) {
     console.error(error);
     message.reply('there was an error trying to execute that command!');

@@ -6,7 +6,7 @@ module.exports = {
 	description: '사용가능한 모든 명령어',
 	aliases: ['commands'],
   usage: '[command name]',
-  role: '개인',
+  role: '관리자',
   cooldown: 5,
 	execute(message, args) {
     const data = [];
@@ -17,8 +17,10 @@ module.exports = {
       const helpEmbed = new Discord.RichEmbed()
         .setColor('ORANGE')
         .setTitle('사용가능한 모든 명령어')
-        .addField('adds 스트리머ID', '실시간 감시당할 스트리머 지정')
-        .addField('dels 스트리머ID', '감시중인 스트리머 해제');
+        .addField('.adds 스트리머ID', '실시간 감시당할 스트리머 지정')
+        .addField('.dels 스트리머ID', '감시중인 스트리머 해제')
+        .addField('.role-info 역할태그', '역할ID 확인')
+        .addField('.channel-info 채널태그', '채널ID 확인');
 
       return message.channel.send(helpEmbed)
     }
